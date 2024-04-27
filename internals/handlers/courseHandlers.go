@@ -5,7 +5,9 @@ import (
 
 	"github.com/AaronDennis07/electrum/internals/database"
 	"github.com/AaronDennis07/electrum/internals/models"
+	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 )
 
 func CreateCourse(c *fiber.Ctx) error {
@@ -125,4 +127,9 @@ func DeleteCourse(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"data": "Course Deleted",
 	})
+}
+
+func WsHandler(c *websocket.Conn)  {
+	log.Info("New connection")
+	defer c.Close()
 }
