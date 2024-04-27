@@ -58,11 +58,14 @@ func WsHandler(c *websocket.Conn) {
 
 			err = c.WriteMessage(websocket.TextMessage, []byte("you are registered to the course: " + message.CourseId))
 			if err!=nil{
-			log.Error("could not confirm to client") //how to handle? remove from db or are they registered?
-			return
-		}
+				log.Error("could not confirm to client: ",err) //how to handle? remove from db or are they registered?
+				return
+			}
 		}else{
-			_ = c.WriteMessage(websocket.TextMessage, []byte("invalid course"))
+			err = c.WriteMessage(websocket.TextMessage, []byte("invalid course"))
+			if err != nil {
+				log.Error("could not confirm to client: ", err)
+			}
 		}
 		
 

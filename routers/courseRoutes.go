@@ -17,5 +17,6 @@ func SetupCourseRoutes(app *fiber.App) {
 	api.Post("", handlers.CreateCourse)
 	api.Put("/:id", handlers.UpdateCourse)
 	api.Delete("/:id", handlers.DeleteCourse)
+	
 	app.Get("/ws", websocket.New(handlers.WsHandler))
 }
