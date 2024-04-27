@@ -4,11 +4,8 @@ import (
 	"net/http"
 
 	"github.com/AaronDennis07/electrum/internals/database"
-	"github.com/AaronDennis07/electrum/internals/hub"
 	"github.com/AaronDennis07/electrum/internals/models"
-	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/log"
 )
 
 func CreateCourse(c *fiber.Ctx) error {
@@ -130,25 +127,3 @@ func DeleteCourse(c *fiber.Ctx) error {
 	})
 }
 
-func WsHandler(c *websocket.Conn)  {
-	defer func(){
-		hub.Unregister <- c
-		c.Close()
-	}()
-
-	log.Info("New connection")
-	hub.Register <- c
-
-	for {
-		_, msg, err := c.ReadMessage()
-		if err != nil {
-			log.Error("read:", err)
-			return
-		}
-
-		hub.Broadcast <- string(msg)
-		
-	}
-
-
-}
