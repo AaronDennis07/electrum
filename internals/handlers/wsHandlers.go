@@ -25,12 +25,10 @@ func WsHandler(c *websocket.Conn) {
 		c.Close()
 	}()
 
-	log.Info("New connection")
 	hub.Register <- c
 	jsonSeats , err := json.Marshal(tempSeats)
 	if err!=nil{
-		log.Error("could not marshal seats")
-		
+		log.Error("could not marshal seats: ",err)
 	}
 	c.WriteMessage(websocket.TextMessage, jsonSeats)
 
@@ -50,29 +48,36 @@ func WsHandler(c *websocket.Conn) {
 		//TODO: updateredis
 
 
+
 		//temp
-		mut.Lock()
+		
 		if _ , ok := tempSeats[message.CourseId]; ok{
-				tempSeats[message.CourseId]--
+			mut.Lock()
+			tempSeats[message.CourseId]--
+			mut.Unlock()
+
+			err = c.WriteMessage(websocket.TextMessage, []byte("you are registered to the course: " + message.CourseId))
+			if err!=nil{
+			log.Error("could not confirm to client") //how to handle? remove from db or are they registered?
+			return
 		}
-		mut.Unlock()
+		}else{
+			_ = c.WriteMessage(websocket.TextMessage, []byte("invalid course"))
+		}
+		
 
 		jsonSeats , err := json.Marshal(tempSeats)
 		if err!=nil{
-			log.Error("could not marshal seats")
-			
+			log.Error("could not marshal seats: ",err)
+			break
 		}
 		hub.Broadcast <- string(jsonSeats)
 		//temp
 
-		//TODO:hub.Broadcast from redis
+		//TODO: hub.Broadcast from redis
 		//TODO: only register to one course
 		
-		err = c.WriteMessage(websocket.TextMessage, []byte("you are registered to the course: " + message.CourseId))
-		if err!=nil{
-			log.Error("could not confirm to client") //how to handle? remove from db or are they registered?
-			return
-		}
+		
 
 
 
