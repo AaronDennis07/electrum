@@ -1,19 +1,21 @@
 package main
 
 import (
+	"context"
 	"log"
-	"net/http"
 
+	"github.com/AaronDennis07/electrum/internals/cache"
 	"github.com/AaronDennis07/electrum/internals/database"
+	"github.com/AaronDennis07/electrum/internals/handlers"
 	"github.com/AaronDennis07/electrum/routers"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/websocket/v2"
+
 	"github.com/joho/godotenv"
 )
 
-func test(c *fiber.Ctx) error {
-	return c.Status(http.StatusOK).JSON(fiber.Map{"message": "this is a test"})
-}
+var ctx = context.Background()
 
 func main() {
 	err := godotenv.Load("./config/.env")
@@ -22,11 +24,12 @@ func main() {
 		log.Fatal("could not load config file ")
 	}
 	database.ConnectDB()
-
+	cache.SetupCache()
 	app := fiber.New()
 	app.Use(logger.New())
 
 	routers.SetupCourseRoutes(app)
 
+	app.Get("/ws/session", websocket.New(handlers.EnrollmentSessionHandler))
 	log.Fatal(app.Listen(":8000"))
 }
