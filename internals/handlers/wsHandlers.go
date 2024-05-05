@@ -14,11 +14,11 @@ type Message struct {
 	Text string `json:"text"`
 }
 
-var ctx = context.Background()
+var Ctx = context.Background()
 
 func EnrollmentSessionHandler(c *websocket.Conn) {
 	channel := "enroll"
-	pubsub := cache.Client.Redis.Subscribe(ctx, channel)
+	pubsub := cache.Client.Redis.Subscribe(Ctx, channel)
 
 	ch := pubsub.Channel()
 	go func() {
@@ -52,7 +52,7 @@ func EnrollmentSessionHandler(c *websocket.Conn) {
 			return
 		}
 
-		cache.Client.Redis.Publish(ctx, channel, message.Text)
+		cache.Client.Redis.Publish(Ctx, channel, message.Text)
 	}
 
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 
 	"github.com/AaronDennis07/electrum/internals/cache"
@@ -14,8 +13,6 @@ import (
 
 	"github.com/joho/godotenv"
 )
-
-var ctx = context.Background()
 
 func main() {
 	err := godotenv.Load("./config/.env")
@@ -31,5 +28,6 @@ func main() {
 	routers.SetupCourseRoutes(app)
 
 	app.Get("/ws/session", websocket.New(handlers.EnrollmentSessionHandler))
+	app.Post("/session/start", handlers.StartSession)
 	log.Fatal(app.Listen(":8000"))
 }
