@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/AaronDennis07/electrum/internals/cache"
+	"github.com/AaronDennis07/electrum/internals/ctx"
 
 	"github.com/gofiber/websocket/v2"
 )
@@ -14,11 +14,9 @@ type Message struct {
 	Text string `json:"text"`
 }
 
-var Ctx = context.Background()
-
 func EnrollmentSessionHandler(c *websocket.Conn) {
 	channel := "enroll"
-	pubsub := cache.Client.Redis.Subscribe(Ctx, channel)
+	pubsub := cache.Client.Redis.Subscribe(ctx.Ctx, channel)
 
 	ch := pubsub.Channel()
 	go func() {
@@ -40,19 +38,19 @@ func EnrollmentSessionHandler(c *websocket.Conn) {
 		}
 	}()
 
-	for {
-		_, msg, err := c.ReadMessage()
-		if err != nil {
-			return
-		}
+	// for {
+	// 	_, msg, err := c.ReadMessage()
+	// 	if err != nil {
+	// 		return
+	// 	}
 
-		var message Message
-		err = json.Unmarshal(msg, &message)
-		if err != nil {
-			return
-		}
+	// 	var message Message
+	// 	err = json.Unmarshal(msg, &message)
+	// 	if err != nil {
+	// 		return
+	// 	}
 
-		cache.Client.Redis.Publish(Ctx, channel, message.Text)
-	}
+	// 	cache.Client.Redis.Publish(ctx.Ctx, channel, message.Text)
+	// }
 
 }

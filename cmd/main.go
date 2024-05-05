@@ -15,6 +15,7 @@ import (
 )
 
 func main() {
+
 	err := godotenv.Load("./config/.env")
 
 	if err != nil {
@@ -27,7 +28,8 @@ func main() {
 
 	routers.SetupCourseRoutes(app)
 
-	app.Get("/ws/session", websocket.New(handlers.EnrollmentSessionHandler))
+	app.Get("/ws/session", websocket.New(handlers.SubscribeToSession))
 	app.Post("/session/start", handlers.StartSession)
+	app.Post("/session/enroll", handlers.EnrollToCourse)
 	log.Fatal(app.Listen(":8000"))
 }
