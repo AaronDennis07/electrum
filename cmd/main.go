@@ -28,8 +28,9 @@ func main() {
 
 	routers.SetupCourseRoutes(app)
 
-	app.Get("/ws/session", websocket.New(handlers.SubscribeToSession))
-	app.Post("/session/start", handlers.StartSession)
-	app.Post("/session/enroll", handlers.EnrollToCourse)
+	app.Get("/ws/session/:session", websocket.New(handlers.SubscribeToSession))
+	app.Post("/session/:session/start", handlers.StartSession)
+	app.Post("/session/:session/enroll", handlers.EnrollToCourse)
+	app.Post("/session/:session/stop", handlers.StopSession)
 	log.Fatal(app.Listen(":8000"))
 }

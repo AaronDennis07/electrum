@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/AaronDennis07/electrum/internals/cache"
 	"github.com/AaronDennis07/electrum/internals/ctx"
+	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 )
@@ -17,6 +19,10 @@ type Session struct {
 }
 
 func StartSession(c *fiber.Ctx) error {
+	sessionName  := c.Params("session")
+	courseKey := sessionName + ":courses"
+	studentKey := sessionName + ":students"
+
 	var session Session
 	err := c.BodyParser(&session)
 	if err != nil {
@@ -25,12 +31,22 @@ func StartSession(c *fiber.Ctx) error {
 			"err":     err,
 		})
 	}
+	
 
-	cache.Client.Redis.HSet(ctx.Ctx, "courses", session.Courses)
-	cache.Client.Redis.HSet(ctx.Ctx, "students", session.Students)
+
+	if sessionExists(courseKey, studentKey) {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"message": "Session: "+sessionName +" already exists",
+		})
+	}
+
+
+	cache.Client.Redis.HSet(ctx.Ctx, courseKey, session.Courses)
+	cache.Client.Redis.HSet(ctx.Ctx, studentKey, session.Students)
 	return c.Status(http.StatusOK).JSON(fiber.Map{
-		"courses":  cache.Client.Redis.HGetAll(ctx.Ctx, "courses").Val(),
-		"students": cache.Client.Redis.HGetAll(ctx.Ctx, "students").Val(),
+		"session": sessionName,
+		"courses":  cache.Client.Redis.HGetAll(ctx.Ctx, courseKey).Val(),
+		"students": cache.Client.Redis.HGetAll(ctx.Ctx, studentKey).Val(),
 	})
 }
 
@@ -42,15 +58,29 @@ func SubscribeToSession(c *websocket.Conn) {
 	// 	return
 	// }
 
-	channel := "enroll"
+	channel := c.Params("session")
+	courseKey := channel + ":courses"
 	pubsub := cache.Client.Redis.Subscribe(ctx.Ctx, channel)
 
 	ch := pubsub.Channel()
-
+	courses := cache.Client.Redis.HGetAll(ctx.Ctx, courseKey).Val()
+	if len(courses) != 0 {
+		jsonCourses, _ := json.Marshal(courses)
+		if err := c.WriteMessage(websocket.TextMessage, jsonCourses); err != nil {
+			return
+		} 
+	}
 	for msg := range ch {
 		res := msg
-		fmt.Println(res.Payload)
-		jsonMessage, err := json.Marshal(res.Payload)
+		fmt.Println("payload:"+res.Payload)
+
+		var payloadMap map[string]interface{}
+		err := json.Unmarshal([]byte(res.Payload), &payloadMap)
+		if err != nil {
+			return
+		}
+
+		jsonMessage, err := json.Marshal(payloadMap)
 		if err != nil {
 			return
 		}
@@ -58,7 +88,7 @@ func SubscribeToSession(c *websocket.Conn) {
 		if err := c.WriteMessage(websocket.TextMessage, jsonMessage); err != nil {
 			return
 		} else {
-			fmt.Println(jsonMessage)
+			fmt.Println(string(jsonMessage))
 		}
 	}
 }
@@ -78,8 +108,14 @@ func SubscribeToSession(c *websocket.Conn) {
 // 	cache.Client.Redis.Publish(ctx.Ctx, channel, message.Text)
 // }
 
+func sessionExists(key1 string, key2 string) bool {
+	return cache.Client.Redis.Exists(ctx.Ctx, key1,key2).Val() > 0 
+}
+
 func EnrollToCourse(c *fiber.Ctx) error {
-	channel := "enroll"
+	channel := c.Params("session")
+	courseKey := channel + ":courses"
+	studentKey := channel + ":students"
 	req := struct {
 		ID     string
 		Course string
@@ -90,20 +126,73 @@ func EnrollToCourse(c *fiber.Ctx) error {
 			"message": "Invalid data recieved",
 		})
 	}
-	course := cache.Client.Redis.HGet(ctx.Ctx, "courses", req.Course)
-	if course == nil {
+	if !sessionExists(courseKey, studentKey){
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-			"message": "course does not exist",
+			"message": "session does not exist",
 		})
 	}
-	fmt.Println(req)
-	cache.Client.Redis.HSet(ctx.Ctx, "students", req.ID, req.Course)
-	cache.Client.Redis.HIncrBy(ctx.Ctx, "courses", req.Course, -1)
-	courses, _ := cache.Client.Redis.HGetAll(ctx.Ctx, "courses").Result()
+
+	course := cache.Client.Redis.HGet(ctx.Ctx, courseKey, req.Course).Val()
+	if course == "" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"message": "Course does not exist",
+		})
+	}
+
+	student, err := cache.Client.Redis.HGet(ctx.Ctx, studentKey, req.ID).Result()
+	if err == redis.Nil{
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"message": "Student does not exist",
+		})
+	} else if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"message": "Something went wrong",
+		})
+	}
+
+	if student != "" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"message": "Student already enrolled in course:" + student,
+		})
+	}
+
+	courseInt, err := strconv.Atoi(course)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid course",
+		})
+	}
+
+	if courseInt <= 0 {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"message": "Course is full",
+		})
+	}
+
+	cache.Client.Redis.HSet(ctx.Ctx, studentKey, req.ID, req.Course)
+	cache.Client.Redis.HIncrBy(ctx.Ctx, courseKey, req.Course, -1)
+
+	courses := cache.Client.Redis.HGetAll(ctx.Ctx, courseKey).Val()
+
 	jsonCourses, _ := json.Marshal(courses)
-	fmt.Println(string(jsonCourses))
+	fmt.Println("jsoncourses"+string(jsonCourses))
 	cache.Client.Redis.Publish(ctx.Ctx, channel, string(jsonCourses))
+
 	return c.Status(http.StatusOK).JSON(fiber.Map{
 		"message": "Successfully enrolled",
+	})
+}
+
+func StopSession(c *fiber.Ctx) error {
+	sessionName := c.Params("session")
+	isDeleted := cache.Client.Redis.Del(ctx.Ctx, sessionName+":courses",sessionName+":students").Val()
+	
+	if isDeleted == 0 {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"message": "Session does not exist",
+		})
+	}
+	return c.Status(http.StatusOK).JSON(fiber.Map{
+		"message": "Session stopped",
 	})
 }
