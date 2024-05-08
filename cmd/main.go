@@ -32,5 +32,9 @@ func main() {
 	app.Post("/session/:session/start", handlers.StartSession)
 	app.Post("/session/:session/enroll", handlers.EnrollToCourse)
 	app.Post("/session/:session/stop", handlers.StopSession)
+
+	app.Post("/session/:session/studentupload", handlers.UploadStudent)
+	app.Post("/session/:session/courseupload", handlers.UploadCourse)
+	app.Post("/session/:session/upload", handlers.UploadData)
 	log.Fatal(app.Listen(":8000"))
 }
