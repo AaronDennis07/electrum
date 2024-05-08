@@ -8,6 +8,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.4
 	github.com/gofiber/websocket/v2 v2.2.1
 	github.com/joho/godotenv v1.5.1
+	github.com/xuri/excelize/v2 v2.8.1
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.10
 )
@@ -36,7 +37,6 @@ require (
 	github.com/valyala/fasthttp v1.52.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	github.com/xuri/efp v0.0.0-20231025114914-d1ff6096ae53 // indirect
-	github.com/xuri/excelize/v2 v2.8.1 // indirect
 	github.com/xuri/nfp v0.0.0-20230919160717-d98342af3f05 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/net v0.23.0 // indirect
