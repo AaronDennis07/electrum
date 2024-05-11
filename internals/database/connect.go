@@ -8,7 +8,6 @@ import (
 	"github.com/AaronDennis07/electrum/internals/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 type Dbinstance struct {
@@ -27,10 +26,13 @@ func ConnectDB() {
 	fmt.Println("DB connected")
 
 	log.Println("Connected")
-	db.Logger = logger.Default.LogMode(logger.Info)
+	// db.Logger = logger.Default.LogMode(logger.Info)
 	log.Println("running migrations")
 
-	db.AutoMigrate(&models.Course{})
+	err = db.AutoMigrate(&models.Department{}, &models.Student{}, &models.Course{}, &models.Session{}, &models.Enrollment{})
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println("Database migrated")
 	DB = Dbinstance{
 		Db: db,
