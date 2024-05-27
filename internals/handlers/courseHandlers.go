@@ -92,8 +92,8 @@ func UpdateCourse(c *fiber.Ctx) error {
 		})
 	}
 
-	course.Code = updatedCourse.Code
-	course.Name = updatedCourse.Name
+	course.Code = &updatedCourse.Code
+	course.Name = &updatedCourse.Name
 
 	db.Save(&course)
 

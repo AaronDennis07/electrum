@@ -29,6 +29,7 @@ func main() {
 	routers.SetupCourseRoutes(app)
 
 	app.Get("/ws/session/:session", websocket.New(handlers.SubscribeToSession))
+	app.Post("/session", handlers.CreateSession)
 	app.Post("/session/:session/start", handlers.StartSession)
 	app.Post("/session/:session/enroll", handlers.EnrollToCourse)
 	app.Post("/session/:session/stop", handlers.StopSession)
