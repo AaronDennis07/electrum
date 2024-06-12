@@ -23,6 +23,7 @@ type Course struct {
 	gorm.Model
 	Name         *string    `json:"name"`
 	Code         *string    `json:"code"`
+	Seats        *uint      `json:"seats"`
 	DepartmentID *uint      `json:"department_id"`
 	Department   Department `json:"-"`
 	SessionID    *uint      `json:"session_id"`

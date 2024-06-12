@@ -26,14 +26,17 @@ type SessionRequest struct {
 	Students []string        `json:"students"`
 }
 type CourseRequest struct {
-	Name         string `json:"name"`
-	Code         string `json:"code"`
-	DepartmentID uint   `json:"department_id"`
+	Name       string `json:"name"`
+	Code       string `json:"code"`
+	Department string `json:"department"`
 }
 
 func CreateSession(c *fiber.Ctx) error {
 	db := database.DB.Db
 	request := new(SessionRequest)
+	//session
+	//courses
+	//students
 	err := c.BodyParser(request)
 	if err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -42,11 +45,21 @@ func CreateSession(c *fiber.Ctx) error {
 		})
 	}
 
+	//adding courses
 	for _, reqCourse := range request.Courses {
+		var department models.Department
+		// err = db.Preload("Student").Where("session_id=?", request.Session.ID).Find(&enrolledStudents).Error
+		err := db.Where("name=?", reqCourse.Department).First(&department).Error
+		if err != nil {
+			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"message": "error in finding department in db",
+				"err":     err,
+			})
+		}
 		course := models.Course{
-			Name:         &reqCourse.Name,
-			Code:         &reqCourse.Code,
-			DepartmentID: &reqCourse.DepartmentID,
+			Name:       &reqCourse.Name,
+			Code:       &reqCourse.Code,
+			Department: department,
 		}
 		err = db.Create(&course).Error
 		if err != nil {
@@ -55,9 +68,17 @@ func CreateSession(c *fiber.Ctx) error {
 				"err":     err,
 			})
 		}
+		// var cc models.Course
+		// db.Preload("Department").Where("name=?", course.Name).First(&cc)
+		// log.Println("just checking")
+		// log.Println(*cc.DepartmentID)
+		// log.Println(cc.ID)
+		// log.Println(*cc.Name)
+		// log.Println(*cc.Department.Name)
 		request.Session.Courses = append(request.Session.Courses, course)
 	}
 
+	//creating session
 	err = db.Create(&request.Session).Error
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
@@ -65,12 +86,13 @@ func CreateSession(c *fiber.Ctx) error {
 			"err":     err,
 		})
 	}
+
+	//checking if students exist
 	var notFound []string = []string{}
 	for _, usn := range request.Students {
 		var student models.Student
 		err = db.Where("usn=?", usn).First(&student).Error
 		if err != nil {
-			fmt.Println(err)
 			notFound = append(notFound, usn)
 			continue
 		}

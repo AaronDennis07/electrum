@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/AaronDennis07/electrum/internals/database"
+	"github.com/AaronDennis07/electrum/internals/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/xuri/excelize/v2"
 )
@@ -50,6 +52,7 @@ func UploadCourse(c *fiber.Ctx) error {
 }
 
 func UploadStudent(c *fiber.Ctx) error {
+	db := database.DB.Db
 	courseFile, err := c.FormFile("student")
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -72,20 +75,39 @@ func UploadStudent(c *fiber.Ctx) error {
 		fmt.Println(err)
 	}
 
-	cols, err := f.GetCols("Sheet1")
+	rows, err := f.GetRows("Sheet1")
 
 	if err != nil {
 		fmt.Println(err)
 
 	}
+	nCreated := []string{}
+	for _, row := range rows {
+		var department models.Department
+		err := db.Where("name=?", row[4]).First(&department).Error
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"message": "error in finding department in db",
+				"err":     err,
+			})
+		}
 
-	data := map[string]interface{}{
-		"students": cols[0],
+		student := models.Student{
+			Usn:        row[0],
+			Name:       &row[1],
+			Email:      &row[2],
+			Password:   &row[3],
+			Department: department,
+		}
+		err = db.Create(&student).Error
+		if err != nil {
+			nCreated = append(nCreated, row[0])
+		}
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "file uploaded successfully",
-		"data":    data,
+		"message":    "file uploaded successfully",
+		"notCreated": nCreated,
 	})
 }
 
@@ -128,10 +150,10 @@ func UploadData(c *fiber.Ctx) error {
 	var courses []map[string]interface{}
 	for _, row := range coursesRow {
 		mapRow := map[string]interface{}{
-			row[0]: map[string]interface{}{
-				"name":  row[1],
-				"seats": row[2],
-			},
+			"code":  row[0],
+			"name":  row[1],
+			"seats": row[2],
+			"dept":  row[3],
 		}
 		courses = append(courses, mapRow)
 	}

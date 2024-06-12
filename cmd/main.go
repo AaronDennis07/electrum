@@ -37,5 +37,6 @@ func main() {
 	app.Post("/session/:session/studentupload", handlers.UploadStudent)
 	app.Post("/session/:session/courseupload", handlers.UploadCourse)
 	app.Post("/session/:session/upload", handlers.UploadData)
+	app.Post("/upload/student", handlers.UploadStudent)
 	log.Fatal(app.Listen(":8000"))
 }
