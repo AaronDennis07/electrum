@@ -21,9 +21,9 @@ type Session struct {
 	Students map[string]string
 }
 type SessionRequest struct {
-	Session  models.Session  `json:"session"`
-	Courses  []CourseRequest `json:"courses"`
-	Students []string        `json:"students"`
+	Session models.Session `json:"session"`
+	// Courses  []CourseRequest `json:"courses"`
+	// Students []string        `json:"students"`
 }
 type CourseRequest struct {
 	Name       string `json:"name"`
@@ -33,11 +33,29 @@ type CourseRequest struct {
 
 func CreateSession(c *fiber.Ctx) error {
 	db := database.DB.Db
+
+	uploadedFile, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "error in uploading file",
+			"err":     err,
+		})
+	}
+	students, CourseData, err := parseExcel(uploadedFile)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "error in parsing file",
+			"err":     err,
+		})
+	}
+
 	request := new(SessionRequest)
 	//session
 	//courses
 	//students
-	err := c.BodyParser(request)
+	re := c.FormValue("data")
+	err = json.Unmarshal([]byte(re), &request)
+	// err = c.BodyParser(request)
 	if err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid data recieved",
@@ -46,9 +64,8 @@ func CreateSession(c *fiber.Ctx) error {
 	}
 
 	//adding courses
-	for _, reqCourse := range request.Courses {
+	for _, reqCourse := range CourseData {
 		var department models.Department
-		// err = db.Preload("Student").Where("session_id=?", request.Session.ID).Find(&enrolledStudents).Error
 		err := db.Where("name=?", reqCourse.Department).First(&department).Error
 		if err != nil {
 			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
@@ -57,8 +74,9 @@ func CreateSession(c *fiber.Ctx) error {
 			})
 		}
 		course := models.Course{
-			Name:       &reqCourse.Name,
-			Code:       &reqCourse.Code,
+			Name:       reqCourse.Name,
+			Code:       reqCourse.Code,
+			Seats:      &reqCourse.Seats,
 			Department: department,
 		}
 		err = db.Create(&course).Error
@@ -89,7 +107,7 @@ func CreateSession(c *fiber.Ctx) error {
 
 	//checking if students exist
 	var notFound []string = []string{}
-	for _, usn := range request.Students {
+	for _, usn := range students {
 		var student models.Student
 		err = db.Where("usn=?", usn).First(&student).Error
 		if err != nil {
@@ -101,22 +119,22 @@ func CreateSession(c *fiber.Ctx) error {
 			SessionID: &request.Session.ID,
 		}).Error
 		if err != nil {
-			log.Println(err)
+			log.Println("creating enrollment: ", err)
 		}
 	}
 
-	var test models.Session
-	err = db.Preload("Courses").Find(&test, request.Session.ID).Error
+	var createdSession models.Session
+	err = db.Preload("Courses").Find(&createdSession, request.Session.ID).Error
 	if err != nil {
-		fmt.Println(err)
+		log.Println("loading session:", err)
 	}
 	var enrolledStudents []models.Enrollment
 	err = db.Preload("Student").Where("session_id=?", request.Session.ID).Find(&enrolledStudents).Error
 	if err != nil {
-		fmt.Println(err)
+		log.Println("loading enrollment:", err)
 	}
 	return c.Status(http.StatusCreated).JSON(fiber.Map{
-		"session":  test,
+		"session":  createdSession,
 		"enrolled": enrolledStudents,
 		"notFound": notFound,
 	})
@@ -124,8 +142,8 @@ func CreateSession(c *fiber.Ctx) error {
 
 func StartSession(c *fiber.Ctx) error {
 
-	// db := database.DB.Db
-	// // var session models.Session
+	db := database.DB.Db
+	// var session models.Session
 	// db.First(&session, c.Params("session"))
 	// if session.ID == 0 {
 	// 	return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -135,18 +153,25 @@ func StartSession(c *fiber.Ctx) error {
 
 	sessionName := c.Params("session")
 
-	// db.Preload("Courses").Preload("Students").First(&session, sessionName)
-	courseKey := sessionName + ":courses"
-	studentKey := sessionName + ":students"
-
-	var session Session
-	err := c.BodyParser(&session)
+	var sessionDb models.Session
+	err := db.Preload("Courses").Where("name=?", sessionName).First(&sessionDb).Error
 	if err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-			"message": "Something went wrong",
+			"message": "Session does not exist",
 			"err":     err,
 		})
 	}
+	courseKey := sessionName + ":courses"
+	studentKey := sessionName + ":students"
+
+	// var session Session
+	// err = c.BodyParser(&session)
+	// if err != nil {
+	// 	return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+	// 		"message": "Something went wrong",
+	// 		"err":     err,
+	// 	})
+	// }
 
 	if sessionExists(courseKey, studentKey) {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -154,8 +179,25 @@ func StartSession(c *fiber.Ctx) error {
 		})
 	}
 
-	cache.Client.Redis.HSet(ctx.Ctx, courseKey, session.Courses)
-	cache.Client.Redis.HSet(ctx.Ctx, studentKey, session.Students)
+	for _, course := range sessionDb.Courses {
+		err = cache.Client.Redis.HSet(ctx.Ctx, courseKey, *course.Code, *course.Seats).Err()
+		if err != nil {
+			log.Println("populating session redis", err)
+		}
+	}
+
+	var enrollments []models.Enrollment
+	db.Preload("Student").Preload("Session").Where("Session_ID = ?", sessionDb.ID).Find(&enrollments)
+	for _, enrollment := range enrollments {
+		err = cache.Client.Redis.HSet(ctx.Ctx, studentKey, *enrollment.StudentID, "").Err()
+		if err != nil {
+			log.Println("populating students redis", err)
+		}
+	}
+
+	// cache.Client.Redis.HSet(ctx.Ctx, courseKey, session.Courses)
+	// cache.Client.Redis.HSet(ctx.Ctx, studentKey, session.Students)
+
 	return c.Status(http.StatusOK).JSON(fiber.Map{
 		"session":  sessionName,
 		"courses":  cache.Client.Redis.HGetAll(ctx.Ctx, courseKey).Val(),
@@ -164,12 +206,6 @@ func StartSession(c *fiber.Ctx) error {
 }
 
 func SubscribeToSession(c *websocket.Conn) {
-
-	// id := c.Params("id")
-
-	// if exists := cache.Client.Redis.HGet(ctx.Ctx, "students", id); exists != nil {
-	// 	return
-	// }
 
 	channel := c.Params("session")
 	courseKey := channel + ":courses"
@@ -205,21 +241,6 @@ func SubscribeToSession(c *websocket.Conn) {
 		}
 	}
 }
-
-// for {
-// 	_, msg, err := c.ReadMessage()
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	var message Message
-// 	err = json.Unmarshal(msg, &message)
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	cache.Client.Redis.Publish(ctx.Ctx, channel, message.Text)
-// }
 
 func sessionExists(key1 string, key2 string) bool {
 	return cache.Client.Redis.Exists(ctx.Ctx, key1, key2).Val() > 0
@@ -287,8 +308,16 @@ func EnrollToCourse(c *fiber.Ctx) error {
 
 	courses := cache.Client.Redis.HGetAll(ctx.Ctx, courseKey).Val()
 
+	go func() {
+		db := database.DB.Db
+		var session models.Session
+		db.Where("name=?", channel).First(&session)
+		var course models.Course
+		db.Where("code=?", req.Course).First(&course)
+		db.Model(&models.Enrollment{}).Where("session_id=? AND student_id=?", session.ID, req.ID).Update("course1_id", course.ID)
+	}()
+
 	jsonCourses, _ := json.Marshal(courses)
-	fmt.Println("jsoncourses" + string(jsonCourses))
 	cache.Client.Redis.Publish(ctx.Ctx, channel, string(jsonCourses))
 
 	return c.Status(http.StatusOK).JSON(fiber.Map{
@@ -307,5 +336,37 @@ func StopSession(c *fiber.Ctx) error {
 	}
 	return c.Status(http.StatusOK).JSON(fiber.Map{
 		"message": "Session stopped",
+	})
+}
+
+type CourseData struct {
+	Id         uint
+	Name       string
+	Code       string
+	Seats      uint
+	Department string
+}
+
+func GetSession(c *fiber.Ctx) error {
+	db := database.DB.Db
+	sessionName := c.Params("session")
+	var session models.Session
+	db.Where("name=?", sessionName).First(&session)
+	sessionId := session.ID
+	var courses []models.Course
+	db.Preload("Department").Where("session_id=?", sessionId).Find(&courses)
+	courseData := []CourseData{}
+	for _, course := range courses {
+		courseData = append(courseData, CourseData{
+			Id:         course.ID,
+			Name:       *course.Name,
+			Code:       *course.Code,
+			Seats:      *course.Seats,
+			Department: *course.Department.Name,
+		})
+	}
+	return c.Status(http.StatusOK).JSON(fiber.Map{
+		// "session": session,
+		"courses": courseData,
 	})
 }

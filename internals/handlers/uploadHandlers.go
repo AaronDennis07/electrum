@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
+	"strconv"
 
 	"github.com/AaronDennis07/electrum/internals/database"
 	"github.com/AaronDennis07/electrum/internals/models"
@@ -119,14 +121,69 @@ func UploadData(c *fiber.Ctx) error {
 			"err":     err,
 		})
 	}
-
-	//save the file from c.formfile
-	file, err := uploadedFile.Open()
+	students, courses, err := parseExcel(uploadedFile)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "error in opening file",
+			"message": "error in parsing file",
 			"err":     err,
 		})
+	}
+
+	// //save the file from c.formfile
+	// file, err := uploadedFile.Open()
+	// if err != nil {
+	// 	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+	// 		"message": "error in opening file",
+	// 		"err":     err,
+	// 	})
+	// }
+	// defer file.Close()
+
+	// f, err := excelize.OpenReader(file)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+
+	// students, err := f.GetCols("Sheet1")
+
+	// if err != nil {
+	// 	fmt.Println(err)
+
+	// }
+	// coursesRow, err := f.GetRows("Sheet2")
+	// if err != nil {
+	// 	fmt.Println(err)
+
+	// }
+
+	// var courses []map[string]interface{}
+	// for _, row := range coursesRow {
+	// 	mapRow := map[string]interface{}{
+	// 		"code":       row[0],
+	// 		"name":       row[1],
+	// 		"seats":      row[2],
+	// 		"department": row[3],
+	// 	}
+	// 	courses = append(courses, mapRow)
+	// }
+
+	// data := map[string]interface{}{
+	// 	"students": students[0],
+	// 	"courses":  courses,
+	// }
+	data := map[string]interface{}{
+		"students": students[0],
+		"courses":  courses,
+	}
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "file uploaded successfully",
+		"data":    data,
+	})
+}
+func parseExcel(uploadedFile *multipart.FileHeader) ([]string, []models.CourseData, error) {
+	file, err := uploadedFile.Open()
+	if err != nil {
+		return nil, nil, err
 	}
 	defer file.Close()
 
@@ -147,24 +204,22 @@ func UploadData(c *fiber.Ctx) error {
 
 	}
 
-	var courses []map[string]interface{}
+	var courses []models.CourseData
 	for _, row := range coursesRow {
-		mapRow := map[string]interface{}{
-			"code":  row[0],
-			"name":  row[1],
-			"seats": row[2],
-			"dept":  row[3],
+		seats, _ := strconv.ParseUint(row[2], 10, 32)
+		mapRow := models.CourseData{
+			Code:       &row[0],
+			Name:       &row[1],
+			Seats:      uint(seats),
+			Department: &row[3],
 		}
 		courses = append(courses, mapRow)
 	}
 
-	data := map[string]interface{}{
-		"students": students[0],
-		"courses":  courses,
-	}
+	// data := map[string]interface{}{
+	// 	"students": students[0],
+	// 	"courses":  courses,
+	// }
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "file uploaded successfully",
-		"data":    data,
-	})
+	return students[0], courses, nil
 }

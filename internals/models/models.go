@@ -52,3 +52,10 @@ type Enrollment struct {
 	SessionID *uint   `json:"session_id"`
 	Session   Session `json:"-"`
 }
+
+type CourseData struct {
+	Name       *string
+	Code       *string
+	Seats      uint
+	Department *string
+}
