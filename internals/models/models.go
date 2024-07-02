@@ -15,15 +15,19 @@ type Department struct {
 
 type Session struct {
 	gorm.Model
-	Name        *string `json:"name"`
-	SessionType *string `json:"session_type"`
-	Courses     []Course
+	Name            *string `json:"name"`
+	SessionType     *string `json:"session_type"`
+	Status          *string `json:"status"`
+	TotalStudents   *int64  `json:"total_students"`
+	AppliedStudents *int64  `json:"applied_students"`
+	Courses         []Course
 }
 type Course struct {
 	gorm.Model
 	Name         *string    `json:"name"`
 	Code         *string    `json:"code"`
 	Seats        *uint      `json:"seats"`
+	SeatsFilled  *int64     `json:"seats_filled"`
 	DepartmentID *uint      `json:"department_id"`
 	Department   Department `json:"-"`
 	SessionID    *uint      `json:"session_id"`

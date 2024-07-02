@@ -15,6 +15,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 	"github.com/xuri/excelize/v2"
+	"gorm.io/gorm"
 )
 
 type Session struct {
@@ -98,6 +99,9 @@ func CreateSession(c *fiber.Ctx) error {
 	}
 
 	//creating session
+
+	status := "upcoming"
+	request.Session.Status = &status
 	err = db.Create(&request.Session).Error
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
@@ -123,9 +127,21 @@ func CreateSession(c *fiber.Ctx) error {
 			log.Println("creating enrollment: ", err)
 		}
 	}
+	var count int64
+	db.Model(&models.Enrollment{}).Where("session_id=?", request.Session.ID).Count(&count)
+
+	err = db.Model(&request.Session).Update("total_students", count).Error
+	if err != nil {
+		log.Println("updating total students:", err)
+	}
+	err = db.Model(&request.Session).Update("applied_students", 0).Error
+	if err != nil {
+		log.Println("updating applied students:", err)
+	}
 
 	var createdSession models.Session
 	err = db.Preload("Courses").Find(&createdSession, request.Session.ID).Error
+
 	if err != nil {
 		log.Println("loading session:", err)
 	}
@@ -162,6 +178,14 @@ func StartSession(c *fiber.Ctx) error {
 			"err":     err,
 		})
 	}
+	// Assuming 'db' is your database connection and 'sessionDb' is the loaded session model
+	err = db.Model(&sessionDb).Update("status", "open").Error
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to update session status",
+			"err":     err,
+		})
+	}
 	courseKey := sessionName + ":courses"
 	studentKey := sessionName + ":students"
 
@@ -173,7 +197,6 @@ func StartSession(c *fiber.Ctx) error {
 	// 		"err":     err,
 	// 	})
 	// }
-
 	if sessionExists(courseKey, studentKey) {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"message": "Session: " + sessionName + " already exists",
@@ -188,12 +211,23 @@ func StartSession(c *fiber.Ctx) error {
 	}
 
 	var enrollments []models.Enrollment
-	db.Preload("Student").Preload("Session").Where("Session_ID = ?", sessionDb.ID).Find(&enrollments)
+	db.Preload("Student").Preload("Session").Preload("Course1").Where("Session_ID = ?", sessionDb.ID).Find(&enrollments)
 	for _, enrollment := range enrollments {
-		err = cache.Client.Redis.HSet(ctx.Ctx, studentKey, *enrollment.StudentID, "").Err()
-		if err != nil {
-			log.Println("populating students redis", err)
+		if enrollment.Course1ID != nil {
+			err = cache.Client.Redis.HSet(ctx.Ctx, studentKey, *enrollment.StudentID, *enrollment.Course1.Code).Err()
+			if err != nil {
+				log.Println("populating students redis", err)
+			}
+			cache.Client.Redis.HIncrBy(ctx.Ctx, courseKey, *enrollment.Course1.Code, -1)
+
 		}
+		if enrollment.Course1ID == nil {
+			err = cache.Client.Redis.HSet(ctx.Ctx, studentKey, *enrollment.StudentID, "").Err()
+			if err != nil {
+				log.Println("populating students redis", err)
+			}
+		}
+
 	}
 
 	// cache.Client.Redis.HSet(ctx.Ctx, courseKey, session.Courses)
@@ -277,7 +311,7 @@ func EnrollToCourse(c *fiber.Ctx) error {
 	student, err := cache.Client.Redis.HGet(ctx.Ctx, studentKey, req.ID).Result()
 	if err == redis.Nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-			"message": "Student does not exist",
+			"message": "Student is not eligible for this session",
 		})
 	} else if err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -315,6 +349,16 @@ func EnrollToCourse(c *fiber.Ctx) error {
 		db.Where("name=?", channel).First(&session)
 		var course models.Course
 		db.Where("code=?", req.Course).First(&course)
+
+		err = db.Model(&course).Update("seats_filled", gorm.Expr("seats_filled + ?", 1)).Error
+		if err != nil {
+			log.Println("updating seats filled:", err)
+		}
+		err = db.Model(&session).Update("applied_students", gorm.Expr("applied_students + ?", 1)).Error
+		if err != nil {
+			log.Println("updating applied students:", err)
+		}
+
 		db.Model(&models.Enrollment{}).Where("session_id=? AND student_id=?", session.ID, req.ID).Update("course1_id", course.ID)
 	}()
 
@@ -327,8 +371,18 @@ func EnrollToCourse(c *fiber.Ctx) error {
 }
 
 func StopSession(c *fiber.Ctx) error {
+	db := database.DB.Db
 	sessionName := c.Params("session")
 	isDeleted := cache.Client.Redis.Del(ctx.Ctx, sessionName+":courses", sessionName+":students").Val()
+	var session models.Session
+	db.Where("name=?", sessionName).First(&session)
+	err := db.Model(&session).Update("status", "closed").Error
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to stop session",
+			"err":     err,
+		})
+	}
 
 	if isDeleted == 0 {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -388,8 +442,8 @@ func GetSessionDetails(c *fiber.Ctx) error {
 	sessionName := c.Params("session")
 	var session models.Session
 	var enrollments []models.Enrollment
-	db.Where("name=?", sessionName).First(&session)
-	db.Preload("Courses").Where("session_id=?", session.ID).Find(&enrollments)
+	db.Preload("Session").Where("name=?", sessionName).First(&session)
+	db.Where("session_id=?", session.ID).Find(&enrollments)
 	return c.Status(http.StatusOK).JSON(fiber.Map{
 		"session":     session,
 		"enrollments": enrollments,
@@ -405,6 +459,7 @@ func SendEnrollmentsExcel(c *fiber.Ctx) error {
 	f.SetCellValue("Sheet1", "A1", "Student ID")
 	f.SetCellValue("Sheet1", "B1", "Student Name")
 	f.SetCellValue("Sheet1", "C1", "Course Name")
+	f.SetCellValue("Sheet1", "D1", "Course Code")
 
 	// Retrieve enrollments from the database
 	db := database.DB.Db
@@ -426,6 +481,7 @@ func SendEnrollmentsExcel(c *fiber.Ctx) error {
 		f.SetCellValue("Sheet1", "A"+strconv.Itoa(row), safeDerefString(enrollment.StudentID))
 		f.SetCellValue("Sheet1", "B"+strconv.Itoa(row), safeDerefString(enrollment.Student.Name))
 		f.SetCellValue("Sheet1", "C"+strconv.Itoa(row), safeDerefString(enrollment.Course1.Name))
+		f.SetCellValue("Sheet1", "D"+strconv.Itoa(row), safeDerefString(enrollment.Course1.Code))
 	}
 
 	// Save the Excel file to a buffer or a temporary file
