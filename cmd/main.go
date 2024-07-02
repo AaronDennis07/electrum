@@ -39,8 +39,10 @@ func main() {
 	app.Post("/session/:session/start", handlers.StartSession)
 	app.Post("/session/:session/enroll", handlers.EnrollToCourse)
 	app.Post("/session/:session/stop", handlers.StopSession)
-
+	app.Get("/session", handlers.GetAllSessions) // Add this line
 	app.Get("/session/:session", handlers.GetSession)
+	app.Get("/sessiondetails/:session", handlers.GetSessionDetails)
+	app.Get("/session/:session/excel", handlers.SendEnrollmentsExcel)
 	app.Post("/session/:session/studentupload", handlers.UploadStudent)
 	app.Post("/session/:session/courseupload", handlers.UploadCourse)
 	app.Post("/session/:session/upload", handlers.UploadData)
