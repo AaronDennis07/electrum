@@ -8,6 +8,7 @@ import (
 	"github.com/AaronDennis07/electrum/internals/handlers"
 	"github.com/AaronDennis07/electrum/routers"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/websocket/v2"
 
@@ -24,6 +25,11 @@ func main() {
 	database.ConnectDB()
 	cache.SetupCache()
 	app := fiber.New()
+
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+	}))
+
 	app.Use(logger.New())
 
 	routers.SetupCourseRoutes(app)
@@ -33,7 +39,10 @@ func main() {
 	app.Post("/session/:session/start", handlers.StartSession)
 	app.Post("/session/:session/enroll", handlers.EnrollToCourse)
 	app.Post("/session/:session/stop", handlers.StopSession)
-
+	app.Get("/session", handlers.GetAllSessions) // Add this line
+	app.Get("/session/:session", handlers.GetSession)
+	app.Get("/sessiondetails/:session", handlers.GetSessionDetails)
+	app.Get("/session/:session/excel", handlers.SendEnrollmentsExcel)
 	app.Post("/session/:session/studentupload", handlers.UploadStudent)
 	app.Post("/session/:session/courseupload", handlers.UploadCourse)
 	app.Post("/session/:session/upload", handlers.UploadData)
