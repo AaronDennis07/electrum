@@ -348,12 +348,9 @@ func EnrollToCourse(c *fiber.Ctx) error {
 		var session models.Session
 		db.Where("name=?", channel).First(&session)
 		var course models.Course
-		db.Where("code=?", req.Course).First(&course)
+		db.Where("code=? AND session_id=?", req.Course, session.ID).First(&course)
 
 		err = db.Model(&course).Update("seats_filled", gorm.Expr("seats_filled + ?", 1)).Error
-		if err != nil {
-			log.Println("updating seats filled:", err)
-		}
 		err = db.Model(&session).Update("applied_students", gorm.Expr("applied_students + ?", 1)).Error
 		if err != nil {
 			log.Println("updating applied students:", err)
@@ -441,12 +438,12 @@ func GetSessionDetails(c *fiber.Ctx) error {
 	db := database.DB.Db
 	sessionName := c.Params("session")
 	var session models.Session
-	var enrollments []models.Enrollment
-	db.Preload("Session").Where("name=?", sessionName).First(&session)
-	db.Where("session_id=?", session.ID).Find(&enrollments)
+	// var enrollments []models.Enrollment
+	db.Preload("Courses").Where("name=?", sessionName).First(&session)
+
 	return c.Status(http.StatusOK).JSON(fiber.Map{
-		"session":     session,
-		"enrollments": enrollments,
+		"session": session,
+		// "enrollments": enrollments,
 	})
 
 }
