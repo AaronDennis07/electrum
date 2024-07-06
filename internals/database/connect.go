@@ -29,7 +29,7 @@ func ConnectDB() {
 	// db.Logger = logger.Default.LogMode(logger.Info)
 	log.Println("running migrations")
 
-	err = db.AutoMigrate(&models.Department{}, &models.Student{}, &models.Course{}, &models.Session{}, &models.Enrollment{})
+	err = db.AutoMigrate(&models.Department{}, &models.Student{}, &models.Course{}, &models.Session{}, &models.Enrollment{}, &models.Admin{})
 	if err != nil {
 		log.Fatal(err)
 	}

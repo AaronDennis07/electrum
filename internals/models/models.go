@@ -46,6 +46,14 @@ type Student struct {
 	UpdatedAt    time.Time      `json:"-"`
 	DeletedAt    gorm.DeletedAt `json:"-"`
 }
+type Admin struct {
+	Name      string         `gorm:"primaryKey" json:"name"`
+	Email     *string        `gorm:"unique" json:"email"`
+	Password  *string        `json:"-"`
+	CreatedAt time.Time      `json:"-"`
+	UpdatedAt time.Time      `json:"-"`
+	DeletedAt gorm.DeletedAt `json:"-"`
+}
 type Enrollment struct {
 	gorm.Model
 	Course1ID *uint   `json:"course1_id"`

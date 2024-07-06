@@ -9,15 +9,14 @@ import (
 func SetupSessionhRoutes(app *fiber.App) {
 	api := app.Group("/session")
 	api.Get("/ws/:session", websocket.New(handlers.SubscribeToSession)) //studnet
-	api.Post("", handlers.CreateSession)
-	api.Post("/:session/start", handlers.StartSession)
+	api.Post("", handlers.AuthMiddlewareAdmin, handlers.CreateSession)
+	api.Post("/:session/start", handlers.AuthMiddlewareAdmin, handlers.StartSession)
 	api.Post("/:session/enroll", handlers.AuthMiddlewareStudent, handlers.EnrollToCourse) //student
-	api.Post("/:session/stop", handlers.StopSession)
+	api.Post("/:session/stop", handlers.AuthMiddlewareAdmin, handlers.StopSession)
 	api.Get("", handlers.GetAllSessions)      // Add this line student
 	api.Get("/:session", handlers.GetSession) //student
 	api.Get("/details/:session", handlers.GetSessionDetails)
-	api.Get("/:session/excel", handlers.SendEnrollmentsExcel)
-	api.Post("/:session/courseupload", handlers.UploadCourse)
-	api.Post("/:session/upload", handlers.UploadData)
+	api.Get("/:session/excel", handlers.AuthMiddlewareAdmin, handlers.SendEnrollmentsExcel)
+	api.Post("/:session/upload", handlers.AuthMiddlewareAdmin, handlers.UploadData)
 
 }
