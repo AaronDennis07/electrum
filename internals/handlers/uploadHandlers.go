@@ -98,7 +98,6 @@ func UploadStudent(c *fiber.Ctx) error {
 			Usn:        row[0],
 			Name:       &row[1],
 			Email:      &row[2],
-			Password:   &row[3],
 			Department: department,
 		}
 		err = db.Create(&student).Error

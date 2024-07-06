@@ -9,6 +9,7 @@ import (
 type Department struct {
 	gorm.Model
 	Name     *string `gorm:"unique" json:"name"`
+	FName    *string `json:"fname"`
 	Admin    *string `json:"admin"`
 	Password *string `json:"password"`
 }
