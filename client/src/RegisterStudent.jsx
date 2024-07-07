@@ -1,38 +1,39 @@
 import React, { useState } from 'react';
-import { useHistory } from 'react-router-dom';
-import { registerUser } from './api';
+import {  useNavigate } from 'react-router-dom';
+import { registerStudent } from './api';
+import toast, { Toaster } from 'react-hot-toast';
 
 const RegisterStudent = () => {
-  const [name, setName] = useState('');
+  const [usn, setUSN] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [userType, setUserType] = useState('student');
-  const [error, setError] = useState('');
-  const history = useHistory();
+  const navigate = useNavigate();
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     try {
-      await registerUser(name, email, password, userType);
-      history.push('/login');
+      await registerStudent(usn, email, password);
+      toast.success('Registration successful')
+      navigate('/login');
     } catch (error) {
-      setError(error.message);
+      console.log(error.toString())
+      toast.error(error.toString())
     }
   };
 
   return (
     <div>
+      <Toaster position='top-right'/>
       <h2>Register</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
       <form onSubmit={handleSubmit}>
         <div>
-          <label htmlFor="name">Name:</label>
+          <label htmlFor="usn">USN:</label>
           <input
             type="text"
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            id="usn"
+            value={usn}
+            onChange={(e) => setUSN(e.target.value)}
             required
           />
         </div>
@@ -56,17 +57,7 @@ const RegisterStudent = () => {
             required
           />
         </div>
-        <div>
-          <label htmlFor="userType">User Type:</label>
-          <select
-            id="userType"
-            value={userType}
-            onChange={(e) => setUserType(e.target.value)}
-          >
-            <option value="student">Student</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
+      
         <button type="submit">Register</button>
       </form>
     </div>

@@ -113,13 +113,14 @@ func LoginStudent(c *fiber.Ctx) error {
 
 	result := db.Where("USN = ?", loginStudent.USN).First(&student)
 	if result.Error != nil {
-		return c.SendStatus(fiber.StatusUnauthorized)
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Not record found contact the administrator"})
 	}
 	if isPasswordEmpty(student) {
 
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Not registered"})
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(*student.Password), []byte(loginStudent.Password)); err == nil {
+	err := bcrypt.CompareHashAndPassword([]byte(*student.Password), []byte(loginStudent.Password))
+	if err == nil {
 		token := jwt.New(jwt.SigningMethodHS256)
 		claims := token.Claims.(jwt.MapClaims)
 		claims["usn"] = student.Usn
@@ -133,8 +134,8 @@ func LoginStudent(c *fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{"token": t})
 	}
+	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid Credentials"})
 
-	return c.SendStatus(fiber.StatusUnauthorized)
 }
 func LoginAdmin(c *fiber.Ctx) error {
 	loginAdmin := new(AdminLoginRequest)
@@ -149,7 +150,7 @@ func LoginAdmin(c *fiber.Ctx) error {
 
 	result := db.Where("email = ?", loginAdmin.Email).First(&admin)
 	if result.Error != nil {
-		return c.SendStatus(fiber.StatusUnauthorized)
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid Credentials"})
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(*admin.Password), []byte(loginAdmin.Password)); err == nil {
@@ -167,7 +168,7 @@ func LoginAdmin(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{"token": t})
 	}
 
-	return c.SendStatus(fiber.StatusUnauthorized)
+	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid Creadentials"})
 }
 
 func AuthMiddlewareStudent(c *fiber.Ctx) error {

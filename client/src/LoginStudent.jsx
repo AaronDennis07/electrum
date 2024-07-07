@@ -1,25 +1,26 @@
 import React, { useState } from 'react';
-import { loginAdmin } from './api';
+import { loginAdmin, loginStudent } from './api';
 import { useAuth } from './AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 
-const LoginAdmin = () => {
-  const [email, setEmail] = useState('');
+const LoginStudent = () => {
+  const [usn, setUsn] = useState('');
   const [password, setPassword] = useState('');
-  const userType = 'admin';
+  const userType = 'student';
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const data = await loginAdmin(email, password);
-      login(data.token, userType);
-      navigate('/admin/session' );
+      const data = await loginStudent(usn, password);
+      console.log(data)
+      login(data.token, userType,usn);
+      navigate('/session');
 
     } catch (error) {
-      console.error('Login failed:', error);
+      console.log(error.toString())
       toast.error(error.toString())
     }
   };
@@ -29,10 +30,10 @@ const LoginAdmin = () => {
       <Toaster position='top-right'/>
     <form onSubmit={handleSubmit}>
       <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Email"
+        type="usn"
+        value={usn}
+        onChange={(e) => setUsn(e.target.value)}
+        placeholder="USN"
         required
       />
       <input
@@ -49,4 +50,4 @@ const LoginAdmin = () => {
   );
 };
 
-export default LoginAdmin;
+export default LoginStudent;
