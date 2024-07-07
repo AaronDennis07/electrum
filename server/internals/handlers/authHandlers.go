@@ -150,7 +150,7 @@ func LoginAdmin(c *fiber.Ctx) error {
 
 	result := db.Where("email = ?", loginAdmin.Email).First(&admin)
 	if result.Error != nil {
-		return c.SendStatus(fiber.StatusUnauthorized)
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid Credentials"})
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(*admin.Password), []byte(loginAdmin.Password)); err == nil {
@@ -168,7 +168,7 @@ func LoginAdmin(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{"token": t})
 	}
 
-	return c.SendStatus(fiber.StatusUnauthorized)
+	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid Creadentials"})
 }
 
 func AuthMiddlewareStudent(c *fiber.Ctx) error {

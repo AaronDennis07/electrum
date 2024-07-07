@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { loginAdmin } from './api';
 import { useAuth } from './AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 
 const LoginAdmin = () => {
   const [email, setEmail] = useState('');
@@ -15,14 +16,17 @@ const LoginAdmin = () => {
     try {
       const data = await loginAdmin(email, password);
       login(data.token, userType);
-      navigate(userType === 'admin' ? '/admin/session' : '/session');
+      navigate('/admin/session' );
 
     } catch (error) {
       console.error('Login failed:', error);
+      toast.error(error.toString())
     }
   };
 
   return (
+    <div>
+      <Toaster position='top-right'/>
     <form onSubmit={handleSubmit}>
       <input
         type="email"
@@ -41,6 +45,7 @@ const LoginAdmin = () => {
       
       <button type="submit">Login</button>
     </form>
+    </div>
   );
 };
 

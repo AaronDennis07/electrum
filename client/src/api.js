@@ -23,6 +23,29 @@ export const loginStudent = async (usn, password) => {
 
   return response.json();
 };
+export const registerStudent = async (usn,email, password) => {
+  console.log(usn,password)
+  const response = await fetch(`${API_URL}/student/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ usn,email, password }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json()
+    let err=""
+    if(error.error)
+      err = error.error
+    else
+      err = "Something went wrong"
+
+    throw new Error(err)
+  }
+
+  return response.json();
+};
 export const loginAdmin = async (email, password) => {
   const response = await fetch(`${API_URL}/admin/login`, {
     method: 'POST',
@@ -33,7 +56,14 @@ export const loginAdmin = async (email, password) => {
   });
 
   if (!response.ok) {
-    throw new Error('Login failed');
+    const error = await response.json()
+    let err=""
+    if(error.error)
+      err = error.error
+    else
+      err = "Something went wrong"
+
+    throw new Error(err)
   }
 
   return response.json();

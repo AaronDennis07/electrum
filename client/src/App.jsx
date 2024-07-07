@@ -14,6 +14,7 @@ import { AuthProvider } from './AuthContext.jsx';
 import LoginAdmin from './LoginAdmin.jsx';
 import PrivateRoute from './PrivateRoute.jsx';
 import LoginStudent from './LoginStudent.jsx';
+import RegisterStudent from './RegisterStudent.jsx';
 
 
 export function App() {
@@ -25,6 +26,7 @@ export function App() {
       <Routes>
       <Route path="/admin/login" element={<LoginAdmin/>} />
       <Route path="/login" element={<LoginStudent/>} />
+      <Route path="/register" element={<RegisterStudent/>} />
       <Route path="/admin/create" element={<PrivateRoute allowedUserType="admin"><CreateSessionForm/></PrivateRoute>} />
       <Route path="/admin/download" element={<PrivateRoute allowedUserType="admin"><DownloadSession/></PrivateRoute>} />
       <Route path="/admin/session" element={<PrivateRoute allowedUserType="admin"><AdminSessionPage/></PrivateRoute>} />
