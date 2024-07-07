@@ -11,35 +11,58 @@ const EnrollmentPeriodCourses = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [enrollingCourse, setEnrollingCourse] = useState(null);
+  const [enrolled, setEnrolled] = useState(null);
 
   useEffect(() => {
     if (user.userId) {
       fetchCourses();
     }
-    const fetchCourses = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(
-          `http://localhost:8000/session/${sessionName}`,
-        );
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        const data = await response.json();
-        setCourses(
-          data.courses.map((course) => ({
-            ...course,
-            availableSeats: course.Seats,
-          })),
-        );
-        setLoading(false);
-      } catch (error) {
-        setError("Failed to fetch courses");
-        setLoading(false);
-        toast.error("Failed to load courses. Please try again later.");
-      }
-    };
+
   }, [user.userId, sessionName]);
+  useEffect(() => {
+    checkEnrollmentStatus();
+  }, [enrolled]);
+
+  const fetchCourses = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `http://localhost:8000/session/${sessionName}`,
+      );
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const data = await response.json();
+      setCourses(
+        data.courses.map((course) => ({
+          ...course,
+          availableSeats: course.Seats,
+        })),
+      );
+      setLoading(false);
+    } catch (error) {
+      setError("Failed to fetch courses");
+      setLoading(false);
+      toast.error("Failed to load courses. Please try again later.");
+    }
+  };
+  const checkEnrollmentStatus = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/session/${sessionName}/checkenrollment/${user.userId}`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to check enrollment status");
+      }
+      const data = await response.json();
+      if(data.enrolled){
+        setEnrolled(data.coursecode)
+      }
+    } catch (error) {
+      setError("Failed to check enrollment status");
+      toast.error("Failed to check enrollment status.");
+    }
+};
 
   useEffect(() => {
     if (courses.length > 0) {
@@ -73,6 +96,7 @@ const EnrollmentPeriodCourses = () => {
 
   const handleEnroll = async (courseCode) => {
     setEnrollingCourse(courseCode);
+    setEnrolled(courseCode)
     try {
       const response = await fetch(
         `http://localhost:8000/session/${sessionName}/enroll`,
@@ -151,14 +175,16 @@ const EnrollmentPeriodCourses = () => {
                 className="w-full bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 onClick={() => handleEnroll(course.Code)}
                 disabled={
-                  enrollingCourse === course.Code || course.availableSeats === 0
+                  enrollingCourse === course.Code || course.availableSeats === 0 || enrolled !== null
                 }
               >
                 {enrollingCourse === course.Code
                   ? "Enrolling..."
-                  : course.availableSeats === 0
-                    ? "Full"
-                    : "Enroll"}
+                  : enrolled === course.Code
+                    ? "Enrolled"
+                    : course.availableSeats === 0
+                      ? "Full"
+                      : "Enroll"}
               </button>
             </div>
           </div>

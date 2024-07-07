@@ -6,7 +6,10 @@ const PrivateRoute = ({ children, allowedUserType }) => {
   const location = useLocation();
   console.log(user);
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    if(allowedUserType === "admin")
+      return <Navigate to="/admin/login" state={{ from: location }} replace />;
+    else
+      return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (user.userType !== allowedUserType) {

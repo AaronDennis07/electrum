@@ -34,6 +34,7 @@ func main() {
 	routers.SetupCourseRoutes(app)
 	routers.SetupAuthRoutes(app)
 	routers.SetupSessionhRoutes(app)
+	routers.SetupStudentRoutes(app)
 	// app.Get("/ws/session/:session", websocket.New(handlers.SubscribeToSession)) //studnet
 	// app.Post("/session", handlers.CreateSession)
 	// app.Post("/session/:session/start", handlers.StartSession)

@@ -18,5 +18,5 @@ func SetupSessionhRoutes(app *fiber.App) {
 	api.Get("/details/:session", handlers.GetSessionDetails)
 	api.Get("/:session/excel", handlers.SendEnrollmentsExcel)
 	api.Post("/:session/upload", handlers.UploadData)
-
+	api.Get("/:session/checkenrollment/:student", handlers.CheckEnrollment)
 }

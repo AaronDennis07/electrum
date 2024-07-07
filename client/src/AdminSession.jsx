@@ -52,6 +52,9 @@ const AdminSessionPage = () => {
       });
   };
 
+  const handleDetails = (sessionName) => {
+    navigate(`/admin/session/${sessionName}`);
+  };
   const getStatusColor = (status) => {
     switch (status) {
       case "open":
@@ -67,13 +70,13 @@ const AdminSessionPage = () => {
 
   const renderSessionCard = (session) => (
     <div key={session.ID} className="bg-white shadow-md rounded-lg p-6 mb-4">
-      <h3 className="text-xl font-semibold mb-2">{session.name}</h3>
+      <h3 className="text-xl font-semibold mb-2" onClick={() => handleDetails}>{session.name}</h3>
       <p className="text-gray-600 mb-2">Type: {session.session_type}</p>
       <p className="text-gray-600 mb-2">
-        Total Students: {session.totalstudents}
+        Total Students: {session.total_students}
       </p>
       <p className="text-gray-600 mb-2">
-        Applied Students: {session.appliedstuendts}
+        Applied Students: {session.applied_students}
       </p>
       <div
         className={`inline-block px-2 py-1 rounded-full text-white text-sm ${getStatusColor(session.status)} mb-2`}
@@ -98,6 +101,13 @@ const AdminSessionPage = () => {
         >
           Stop
         </button>
+        <button
+          onClick={() => handleDetails(session.name)}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          disabled={session.status === "closed"}
+        >
+          Details
+        </button>
       </div>
     </div>
   );
@@ -116,6 +126,14 @@ const AdminSessionPage = () => {
         }}
       >
         Create
+      </button>
+      <button
+        className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mx-2"
+        onClick={() => {
+          navigate("/admin/upload");
+        }}
+      >
+        Upload
       </button>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {sessions.map(renderSessionCard)}

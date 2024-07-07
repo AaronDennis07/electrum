@@ -505,3 +505,32 @@ func safeDerefString(s *string) string {
 	}
 	return ""
 }
+
+func CheckEnrollment(c *fiber.Ctx) error {
+	db := database.DB.Db
+	sessionName := c.Params("session")
+	var session models.Session
+	db.Where("name=?", sessionName).First(&session)
+	if session.ID == 0 {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"message": "Session does not exist",
+		})
+	}
+	var enrollment models.Enrollment
+	var student models.Student
+	db.Where("usn=?", c.Params("student")).First(&student)
+	db.Preload("Course1").Preload("Student").Where("session_id=? and student_id=?", session.ID, student.Usn).First(&enrollment)
+	if enrollment.Course1ID == nil {
+		return c.Status(http.StatusOK).JSON(fiber.Map{
+			"message":  "Student is not enrolled in any course",
+			"enrolled": false,
+		})
+	}
+
+	return c.Status(http.StatusOK).JSON(fiber.Map{
+		"message":    "Student is enrolled ",
+		"coursecode": enrollment.Course1.Code,
+		"enrolled":   true,
+	})
+
+}
