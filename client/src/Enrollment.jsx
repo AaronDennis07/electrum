@@ -2,20 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
 import { useUser } from './UserContext'; // Import the useUser hook
+import { useAuth } from './AuthContext';
 
 const EnrollmentPeriodCourses = () => {
   const { sessionName } = useParams();
-  const { userId } = useUser(); // Use the userId from context
+  const { user } = useAuth(); // Use the user.userId from context
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [enrollingCourse, setEnrollingCourse] = useState(null);
-
+  
   useEffect(() => {
-    if (userId) {
+    if (user.userId) {
       fetchCourses();
     }
-  }, [userId, sessionName]);
+  }, [user.userId, sessionName]);
 
   const fetchCourses = async () => {
     setLoading(true);
@@ -72,7 +73,7 @@ const EnrollmentPeriodCourses = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          id: userId,
+          id: user.userId,
           course: courseCode
         }),
       });
@@ -90,7 +91,7 @@ const EnrollmentPeriodCourses = () => {
     }
   };
 
-  if (!userId) {
+  if (!user.userId) {
     return <Navigate to="/login" />;
   }
 

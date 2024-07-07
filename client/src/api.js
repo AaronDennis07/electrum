@@ -1,16 +1,24 @@
 const API_URL = 'http://localhost:8000/auth'; // Replace with your API URL
 
-export const loginUser = async (email, password, userType) => {
-  const response = await fetch(`${API_URL}/${userType}/login`, {
+export const loginStudent = async (usn, password) => {
+  console.log(usn,password)
+  const response = await fetch(`${API_URL}/student/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ usn, password }),
   });
-
+  
   if (!response.ok) {
-    throw new Error('Login failed');
+    const error = await response.json()
+    let err=""
+    if(error.error)
+      err = error.error
+    else
+      err = "Something went wrong"
+
+    throw new Error(err)
   }
 
   return response.json();
