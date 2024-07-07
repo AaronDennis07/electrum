@@ -1,6 +1,6 @@
-import React, { createContext, useState, useContext } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import React, { createContext, useState, useContext } from "react";
+import { Navigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 // Create UserContext
 export const UserContext = createContext(null);
@@ -21,7 +21,7 @@ export const useUser = () => useContext(UserContext);
 
 // Login component
 export const Login = () => {
-  const [inputUserId, setInputUserId] = useState('');
+  const [inputUserId, setInputUserId] = useState("");
   const { setUserId } = useUser();
   const navigate = useNavigate();
 
@@ -30,7 +30,7 @@ export const Login = () => {
     // Here you would typically validate the user ID with your backend
     // For this example, we'll just set it directly
     setUserId(inputUserId);
-    navigate('/session'); // Redirect to home page or dashboard after login
+    navigate("/session"); // Redirect to home page or dashboard after login
   };
 
   return (
@@ -45,7 +45,9 @@ export const Login = () => {
           <input type="hidden" name="remember" value="true" />
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="user-id" className="sr-only">User ID</label>
+              <label htmlFor="user-id" className="sr-only">
+                User ID
+              </label>
               <input
                 id="user-id"
                 name="userId"

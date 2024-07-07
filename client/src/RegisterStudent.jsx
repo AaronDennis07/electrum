@@ -1,30 +1,29 @@
-import React, { useState } from 'react';
-import {  useNavigate } from 'react-router-dom';
-import { registerStudent } from './api';
-import toast, { Toaster } from 'react-hot-toast';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { registerStudent } from "./api";
+import toast, { Toaster } from "react-hot-toast";
 
 const RegisterStudent = () => {
-  const [usn, setUSN] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [usn, setUSN] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const navigate = useNavigate();
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await registerStudent(usn, email, password);
-      toast.success('Registration successful')
-      navigate('/login');
+      toast.success("Registration successful");
+      navigate("/login");
     } catch (error) {
-      console.log(error.toString())
-      toast.error(error.toString())
+      console.log(error.toString());
+      toast.error(error.toString());
     }
   };
 
   return (
     <div>
-      <Toaster position='top-right'/>
+      <Toaster position="top-right" />
       <h2>Register</h2>
       <form onSubmit={handleSubmit}>
         <div>
@@ -57,7 +56,7 @@ const RegisterStudent = () => {
             required
           />
         </div>
-      
+
         <button type="submit">Register</button>
       </form>
     </div>
